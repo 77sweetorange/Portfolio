@@ -1,13 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# # CNN-based Brain Tumour Segmentation Network
-# ## Import packages
-# Please make sure you have all the required packages installed. If GPU is available, but you want to use CPU to train your model, make sure you add " os.environ['CUDA_VISIBLE_DEVICES'] = '-1' " before "from keras.preprocessing.image import ImageDataGenerator"
-
-# In[1]:
-
-
 import numpy as np 
 from tqdm import tqdm
 import os
@@ -30,25 +20,6 @@ from tensorflow.compat.v1 import InteractiveSession
 config = ConfigProto()
 config.gpu_options.allow_growth = True
 session = InteractiveSession(config=config)
-
-
-# ## Data preparation (this step has been done for you)
-# 
-# Images in the original dataset are usually in different sizes, so we need to resize and normalise them to fit the CNN model. Depending on the images you choose to use for training your model, some other preprocessing methods (cropping, zooming, etc.) may be required.
-# 
-# ## Split your dataset into training and validation
-# Validation dataset would not be used to train your network, it is normally for evaluating your model performance and choosing the best set of hyperparameters. Choose the size of your training and validation set yourself.
-
-# In[2]:
-
-
-#uncomment if using linux/macos
-get_ipython().system('rm -rf TrainSeg ValSeg')
-get_ipython().system('mkdir TrainSeg ValSeg TrainSeg/Yes ValSeg/Yes')
-
-#uncomment if using windows
-#!rmdir TrainSeg ValSeg /s /q
-#!md TrainSeg ValSeg TrainSeg\Yes ValSeg\Yes
 
 
 img_path = 'Dataset/'
@@ -74,9 +45,6 @@ for (n, file_name) in enumerate(files):
         shutil.copy(seg, os.path.join('ValSeg/',CLASS,file_name.split('_')[0]+'_seg.npy'))
 
 
-# In[3]:
-
-
 def plot_samples(x,n=10):
     i = n
     j = 2
@@ -99,30 +67,6 @@ def plot_samples(x,n=10):
 plot_samples(train_list, n=5)
 
 
-# ## Train-time data augmentation
-# Generalizability is crucial to a deep learning model and it refers to the performance difference of a model when evaluated on the seen data (training data) versus the unseen data (testing data). Improving the generalizability of these models has always been a difficult challenge. 
-# 
-# **Data Augmentation** is an effective way of improving the generalizability, because the augmented data will represent a more comprehensive set of possible data samples and minimizing the distance between the training and validation/testing sets.
-# 
-# There are many data augmentation methods you can choose in this projects including rotation, shifting, flipping, etc.
-# 
-# You are encouraged to try different augmentation method to get the best classification accuracy.
-# 
-# **Question**
-# 
-# Applying data augmentation to medical images may sometimes make the images uninterpretable to human. For instance, a heart may not look like a heart after shearing the image. Would training the model with these uninterpretable images helpful to improving the model performance? Why do you think it is helpful/not helpful?
-# 
-# ## Get the data generator ready
-# 
-# You may change the batch size of your training data here. A large batch size or even a batch size that equals to the entire dataset is more likely to get your model to the convergence to the global optima of the loss function, but this is at the cost of computational efficiency and sometimes large batch size would lead to a bad model generalisation. 
-# 
-# There is always a trade-off between large and small batch size. Choose a reasonable batch size here to get the best model performance.
-# 
-# You can add your data augmentation methods here. Some simple example can be found at https://towardsdatascience.com/image-augmentation-using-python-numpy-opencv-and-skimage-ef027e9898da.
-
-# In[ ]:
-
-
 class DataGenerator(tf.keras.utils.Sequence):
     def __init__(self, list_IDs, batch_size=16, dim=(240,240), n_channels=3,
                  n_classes=2, shuffle=True):
@@ -138,15 +82,9 @@ class DataGenerator(tf.keras.utils.Sequence):
         return int(np.floor(len(self.list_IDs) / self.batch_size))
 
     def __getitem__(self, index):
-        # Generate indexes of the batch
         indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
-
-        # Find list of IDs
         list_IDs_temp = [self.list_IDs[k] for k in indexes]
-
-        # Generate data
         X, y = self.__data_generation(list_IDs_temp)
-
         return X, y
 
     def on_epoch_end(self):
@@ -159,20 +97,10 @@ class DataGenerator(tf.keras.utils.Sequence):
         # Initialization
         X = np.empty((self.batch_size, *self.dim, self.n_channels))
         y = np.empty((self.batch_size, *self.dim))
-
-        # Generate data
         for i, ID in enumerate(list_IDs_temp):
-            # Store sample
-            # Add data augmentation here
             X[i,] = np.load(ID)
-
-            # Store segmentation map
             y[i] = np.load(ID[:-8] +'_seg.npy')
-
         return X, y
-
-
-# In[ ]:
 
 
 train_generator = DataGenerator(train_list)
@@ -181,25 +109,11 @@ IMG_SIZE = (240,240)
 RANDOM_SEED = 100
 
 
-# ## Define a metric for the performance of the model
-# Dice score is used here to evaluate the performance of your model.
-# More details about the Dice score and other metrics can be found at 
-# https://towardsdatascience.com/metrics-to-evaluate-your-semantic-segmentation-model-6bcb99639aa2
-
-# In[ ]:
-
-
 def dice_score(y_true, y_pred, smooth=1):
     y_true_f = K.flatten(y_true)
     y_pred_f = K.flatten(y_pred)
     intersection = K.sum(y_true_f * y_pred_f)
     return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
-
-
-# ## Build your own model here
-# A vanilla U-Net (https://link.springer.com/chapter/10.1007/978-3-319-24574-4_28) structure is given here for the segmentation task. You are encouraged to modify this structure by changing the hyperparameters of this network. More information about the Keras layers including Conv2D, MaxPooling and Dropout can be found at https://keras.io/api/layers/.
-
-# In[ ]:
 
 
 def unet(input_size = (240,240,3)):
@@ -251,12 +165,6 @@ def unet(input_size = (240,240,3)):
     return model
 
 
-# ## Train your model here
-# Change the epochs value for different number of epochs you intend to train your network for.
-
-# In[ ]:
-
-
 model = unet()
 history = model.fit(
     train_generator,
@@ -265,19 +173,7 @@ history = model.fit(
 )
 
 
-# ## Save the model
-# Save your model for testing later.
-
-# In[ ]:
-
-
 model.save('trained_seg_model.h5')
-
-
-# ## Run the model on the validation set and plot the result
-# For running on the test set, change the test_dir value to 'test/'
-
-# In[ ]:
 
 
 test_dir = 'ValSeg/'
@@ -310,9 +206,6 @@ for i in range(test_generator.__len__()):
 print('Test Score = %.2f' % np.mean(accuracy))
 
 
-# In[ ]:
-
-
 def plot_result(x,y,pred,n=10):
     i = n
     j = 3
@@ -337,10 +230,6 @@ def plot_result(x,y,pred,n=10):
     plt.show()
     
 plot_result(x_test, y_test, predictions, n=5)
-
-
-# In[ ]:
-
 
 
 
